@@ -1,0 +1,13 @@
+Flask==3.0.3
+line-bot-sdk>=3.12.0
+openai>=1.35.0
+gspread>=6.1.2
+google-auth>=2.29.0
+google-api-python-client>=2.131.0
+APScheduler==3.10.4
+gunicorn==22.0.0
+python-dotenv==1.0.1
+aiohttp>=3.10.0
+Pillow>=10.0.0
+google-cloud-vision>=3.7.0
+opencv-python-headless>=4.8.0

@@ -1,0 +1,10 @@
+.env
+*.json
+__pycache__
+*.pyc
+*.pyo
+.git
+記録.txt
+要件定義書.md
+.env.example
+Untitled

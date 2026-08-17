@@ -1,0 +1,18 @@
+# 環境変数・認証情報
+.env
+*.json
+!package.json
+!package-lock.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# ログ・記録
+記録.txt
+run_local_test.log
+
+# その他
+Untitled
