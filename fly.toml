@@ -1,5 +1,5 @@
 # fly.toml - アプリ名は "fly launch" 実行時に設定される
-app = "shift-manager-bot"  # デプロイ前に任意の名前に変更してください
+app = "shift-manager-bot-line"
 primary_region = "nrt"
 
 [build]

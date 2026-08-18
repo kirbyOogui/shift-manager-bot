@@ -49,6 +49,7 @@ def generate_auth_url(user_id: str) -> str:
     )
     _oauth_states[state] = {
         "user_id": user_id,
+        "code_verifier": flow.code_verifier,  # PKCE: コールバック時のトークン交換に必要
         "expires_at": datetime.now().timestamp() + 600,  # 10分有効
     }
     return auth_url
@@ -66,6 +67,7 @@ def handle_callback(state: str, code: str) -> str | None:
     user_id = state_data["user_id"]
 
     flow = _create_flow(state=state)
+    flow.code_verifier = state_data.get("code_verifier")
     flow.fetch_token(code=code)
     creds = flow.credentials
 
