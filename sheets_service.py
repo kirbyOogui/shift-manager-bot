@@ -1,4 +1,5 @@
 import json
+import threading
 import time
 from datetime import datetime
 from google.oauth2.service_account import Credentials
@@ -48,6 +49,7 @@ _SHIFT_HEADERS = [
 # ── キャッシュ ─────────────────────────────────────────
 _ss: gspread.Spreadsheet | None = None   # Spreadsheetオブジェクトを使い回す
 _cache: dict = {}                        # {シート名: {"data": list, "ts": float}}
+_cache_lock = threading.Lock()           # APSchedulerスレッドとWebhookスレッドの同時アクセスから_cacheを保護
 _CACHE_TTL = 30                          # キャッシュ有効秒数
 
 
@@ -86,16 +88,20 @@ def _get_records(ws) -> list:
     """get_all_records()の結果を_CACHE_TTL秒間キャッシュして返す。"""
     key = ws.title
     now = time.time()
-    if key in _cache and now - _cache[key]["ts"] < _CACHE_TTL:
-        return _cache[key]["data"]
+    with _cache_lock:
+        entry = _cache.get(key)
+        if entry and now - entry["ts"] < _CACHE_TTL:
+            return entry["data"]
     data = ws.get_all_records()
-    _cache[key] = {"data": data, "ts": now}
+    with _cache_lock:
+        _cache[key] = {"data": data, "ts": now}
     return data
 
 
 def _invalidate(sheet_name: str) -> None:
     """書き込み後に指定シートのキャッシュを削除する。"""
-    _cache.pop(sheet_name, None)
+    with _cache_lock:
+        _cache.pop(sheet_name, None)
 
 
 def ensure_sheets() -> None:
@@ -121,7 +127,7 @@ def ensure_sheets() -> None:
             col_idx = len(headers) + 1
             if col_idx > ws.col_count:
                 ws.resize(cols=col_idx + 2)
-            ws.update_cell(1, 3, "プロファイル名")
+            ws.update_cell(1, col_idx, "プロファイル名")
 
     if config.SHEET_PROFILES not in existing:
         ws = ss.add_worksheet(title=config.SHEET_PROFILES, rows=500, cols=len(_PROFILE_HEADERS))

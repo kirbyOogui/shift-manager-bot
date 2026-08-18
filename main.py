@@ -713,6 +713,8 @@ def _send_shift_confirm(reply_token: str, user_id: str, shifts: list, label: str
             now = datetime.now(config.TIMEZONE).replace(tzinfo=None)
             if (d - now).days > 180:
                 d = d.replace(year=d.year - 1)
+            elif (d - now).days < -180:
+                d = d.replace(year=d.year + 1)
             return d.strftime("%Y/%m/%d")
         except Exception:
             return date_str
@@ -724,7 +726,11 @@ def _send_shift_confirm(reply_token: str, user_id: str, shifts: list, label: str
     lines = [header]
 
     resolved = []
+    unreadable_count = 0
     for s in shifts:
+        if s.get("start_time") == "unreadable" or s.get("end_time") == "unreadable":
+            unreadable_count += 1
+            continue
         date_str   = _fix_year(s.get("date", ""))
         start_time = _norm(s.get("start_time") or eff["default_start"])
         end_time   = _norm(s.get("end_time")   or eff["default_end"])
@@ -749,6 +755,8 @@ def _send_shift_confirm(reply_token: str, user_id: str, shifts: list, label: str
         return
     if note:
         lines.append(f"※ {note}")
+    if unreadable_count:
+        lines.append(f"⚠️ {unreadable_count}件は文字が読み取れなかったため除外しました。該当日は個別に登録してください。")
     if not label:
         lines.append("\n💡 名前を登録するとあなたのシフトのみ自動抽出できます。\n「仕事名」→「名前を設定」から登録できます。")
     if eff["cutoff_day"] == 0:
@@ -1354,13 +1362,15 @@ def _get_effective_settings(user_id: str, label: str | None) -> dict:
             p_leave_hours = float(p_lh_raw) if p_lh_raw else g_leave_hours
         except (ValueError, TypeError):
             p_leave_hours = g_leave_hours
+        p_break_raw = profile.get("休憩時間(分)", "")
+        p_wage_raw = profile.get("時給(円)", "")
         return {
             "calendar_title": profile.get("カレンダータイトル") or g_title,
             "default_start":  profile.get("デフォルト開始時刻") or "",
             "default_end":    profile.get("デフォルト終了時刻") or "",
-            "break_minutes":  int(profile.get("休憩時間(分)") or g_break),
+            "break_minutes":  int(p_break_raw) if p_break_raw != "" else g_break,
             "color":          profile.get("カレンダーカラー") or g_color,
-            "hourly_wage":    int(profile.get("時給(円)") or g_wage),
+            "hourly_wage":    int(p_wage_raw) if p_wage_raw != "" else g_wage,
             "profile_name":   profile.get("プロファイル名", ""),
             "cutoff_day":     int(profile.get("締め日") or 0),
             "payday":         profile.get("給料日") or "",
@@ -2412,6 +2422,17 @@ def handle_postback(event):
     except (json.JSONDecodeError, AttributeError):
         return
 
+    try:
+        _dispatch_postback(event, data, user_id, reply_token)
+    except Exception as e:
+        logger.error(f"[handle_postback] 未補足エラー: {e}", exc_info=True)
+        try:
+            line_service.reply_text(reply_token, "エラーが発生しました。しばらく時間をおいて再度お試しください。")
+        except Exception:
+            pass
+
+
+def _dispatch_postback(event, data: dict, user_id: str, reply_token: str) -> None:
     action = data.get("action")
 
     # Quick Replyボタンタップ時はヘルプ検索モードを解除（再検索ボタンは除く）

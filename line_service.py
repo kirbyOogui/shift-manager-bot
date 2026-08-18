@@ -17,10 +17,15 @@ import config
 
 logger = logging.getLogger(__name__)
 
+_api: MessagingApi | None = None
+
 
 def _get_api() -> MessagingApi:
-    configuration = Configuration(access_token=config.LINE_CHANNEL_ACCESS_TOKEN)
-    return MessagingApi(ApiClient(configuration))
+    global _api
+    if _api is None:
+        configuration = Configuration(access_token=config.LINE_CHANNEL_ACCESS_TOKEN)
+        _api = MessagingApi(ApiClient(configuration))
+    return _api
 
 
 def reply_text(reply_token: str, text: str) -> None:
