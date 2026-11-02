@@ -6,7 +6,7 @@ google-auth>=2.29.0
 google-api-python-client>=2.131.0
 APScheduler==3.10.4
 gunicorn==22.0.0
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 aiohttp>=3.10.0
 Pillow>=10.0.0
 google-cloud-vision>=3.7.0
